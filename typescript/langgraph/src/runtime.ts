@@ -147,11 +147,21 @@ function dispatchingCall(internals: Internals, original: CallFn): DispatchingCal
 }
 
 /** `config` with the plugin's task scheduler and, for a Workflow node or task, its stream writer. */
-function patchConfig(internals: Internals, config: Config | undefined, spec: NodeSpec | TaskSpec | undefined): Config {
+export function patchConfig(
+  internals: Internals,
+  config: Config | undefined,
+  spec: NodeSpec | TaskSpec | undefined
+): Config {
   const configurable: Config = { ...(config?.configurable ?? {}) };
   const call = configurable[CALL_KEY] as DispatchingCall | undefined;
-  if (typeof call === 'function' && !call[DISPATCHING]) {
-    configurable[CALL_KEY] = dispatchingCall(internals, call);
+  if (typeof call === 'function') {
+    if (!call[DISPATCHING]) configurable[CALL_KEY] = dispatchingCall(internals, call);
+  } else if (internals.tasks.length > 0) {
+    // Without the scheduler the tasks would run inline in the Workflow, doing their I/O there.
+    throw new Error(
+      `LangGraph didn't provide its task scheduler ('configurable.${CALL_KEY}'), so LangGraphPlugin can't run ` +
+        'tasks as Activities. This version of @langchain/langgraph is not supported by @temporalio/langgraph.'
+    );
   }
   const patched: Config = { ...config, configurable };
   const topic = internals.streamingTopic;

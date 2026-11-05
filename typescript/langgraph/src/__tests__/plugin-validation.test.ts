@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'ava';
 import { START, StateGraph, entrypoint, task } from '@langchain/langgraph';
+import { internalsOf } from '../definitions';
 import { LangGraphPlugin, defineLangGraph } from '../index';
+import { patchConfig } from '../runtime';
 import { ValueState, lambdaNodeGraph } from './graphs';
 
 const done = async () => ({ value: 'done' });
@@ -86,4 +88,17 @@ test('graph() outside a Workflow is rejected', (t) => {
 test('the plugin reports the package version', (t) => {
   const { version } = JSON.parse(readFileSync(path.resolve(__dirname, '../../package.json'), 'utf8'));
   t.is(new LangGraphPlugin(defineLangGraph()).version, version);
+});
+
+test("a run without LangGraph's task scheduler fails instead of running tasks inline", (t) => {
+  const myTask = task('my_task', (x: number) => x + 1);
+  const internals = internalsOf(
+    defineLangGraph({ tasks: [myTask], activityOptions: { my_task: { executeIn: 'activity' } } })
+  );
+  t.throws(() => patchConfig(internals, { configurable: {} }, undefined), { message: /task scheduler/ });
+
+  const scheduler = () => undefined;
+  const patched = patchConfig(internals, { configurable: { __pregel_call: scheduler } }, undefined);
+  t.not(patched.configurable.__pregel_call, scheduler);
+  t.is(typeof patched.configurable.__pregel_call, 'function');
 });
