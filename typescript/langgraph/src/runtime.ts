@@ -15,7 +15,7 @@ import type { ActivityOptions } from '@temporalio/common';
 import { GraphInterrupt, getConfig } from '@langchain/langgraph';
 import { AsyncLocalStorageProviderSingleton } from '@langchain/core/singletons';
 import { encodeValue, restoreValue } from './codec';
-import type { ValueTypes } from './codec';
+import type { ValuePath, ValueTypes } from './codec';
 import { runState } from './run-state';
 import { cacheKey } from './task-cache';
 import { splitMetadata } from './options';
@@ -123,7 +123,10 @@ async function executeActivity(spec: NodeSpec | TaskSpec, args: unknown[], confi
   if (restored.langgraph_interrupts != null) {
     throw new GraphInterrupt(restored.langgraph_interrupts as never);
   }
-  store(key, output.result ?? null, output.value_types);
+  const resultTypes = (output.value_types ?? [])
+    .filter(([path]) => path[0] === 'result')
+    .map(([path, typeId]): [ValuePath, string] => [path.slice(1), typeId]);
+  store(key, output.result ?? null, resultTypes.length > 0 ? resultTypes : null);
   return restored.result;
 }
 
