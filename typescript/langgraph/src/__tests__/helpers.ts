@@ -7,7 +7,7 @@
 import path from 'node:path';
 import type { TestFn } from 'ava';
 import { TestWorkflowEnvironment } from '@temporalio/testing';
-import { bundleWorkflowCode, Worker } from '@temporalio/worker';
+import { DefaultLogger, Runtime, bundleWorkflowCode, Worker } from '@temporalio/worker';
 import type { WorkflowBundle } from '@temporalio/worker';
 import { LangGraphPlugin } from '../index';
 import { defineLangGraph } from '../workflow';
@@ -18,6 +18,8 @@ function isSet(env: string | undefined, def: boolean): boolean {
   const value = env.toLowerCase();
   return value === '1' || value === 't' || value === 'true';
 }
+
+Runtime.install({ logger: new DefaultLogger('WARN') });
 
 /** `REUSE_V8_CONTEXT=false` runs Workers with a new V8 context per Workflow. */
 export const REUSE_V8_CONTEXT = isSet(process.env.REUSE_V8_CONTEXT, true);
@@ -82,6 +84,16 @@ export async function withWorker<T>(
     maxCachedWorkflows: options.maxCachedWorkflows,
   });
   return worker.runUntil(fn());
+}
+
+/** Replays a completed Workflow's history with `plugin`, failing on nondeterminism. */
+export async function replay(env: TestWorkflowEnvironment, plugin: LangGraphPlugin, workflowId: string): Promise<void> {
+  const history = await env.client.workflow.getHandle(workflowId).fetchHistory();
+  await Worker.runReplayHistory(
+    { workflowBundle: await workflowBundle(), reuseV8Context: REUSE_V8_CONTEXT, plugins: [plugin] },
+    history,
+    workflowId
+  );
 }
 
 /** A history event, narrowed to the fields the tests read. */
