@@ -19,6 +19,7 @@ import {
   task,
 } from '@langchain/langgraph';
 import type { LangGraphRunnableConfig } from '@langchain/langgraph';
+import { z } from 'zod';
 import { defineLangGraph } from '../workflow';
 import type { ExecuteIn, LangGraphActivityOptions, LangGraphDefinitions, NodeOptions, SummaryFn } from '../workflow';
 
@@ -118,6 +119,49 @@ export const twoNodes = Object.fromEntries(
   EXECUTE_IN.map((first) => [
     first,
     defineLangGraph({ graphs: { 'my-graph': twoNodesGraph(first) }, defaultActivityOptions: DEFAULTS }),
+  ])
+) as Record<ExecuteIn, AnyDefinitions>;
+
+// A zod state schema, LangGraph.js's counterpart of a Pydantic state model.
+const ZodState = z.object({
+  value: z.string(),
+  messages: z.array(z.custom<BaseMessage>((value) => BaseMessage.isInstance(value))),
+  answer: z.object({ value: z.number() }).optional(),
+  answer_type_b: z.string().optional(),
+  message_b: z.string().optional(),
+});
+type ZodValue = z.infer<typeof ZodState>;
+
+function zodStateGraph(first: ExecuteIn) {
+  return new StateGraph(ZodState)
+    .addNode(
+      'node_a',
+      () => ({
+        answer: { value: 1 },
+        messages: [new AIMessage({ content: '', tool_calls: [{ name: 'search', args: {}, id: 'call-1' }] })],
+      }),
+      { metadata: { executeIn: first } }
+    )
+    .addNode(
+      'node_b',
+      (state: ZodValue) => {
+        const message = state.messages.at(-1)!;
+        const names = (message as AIMessage).tool_calls?.map((call) => call.name) ?? [];
+        return {
+          answer_type_b: typeName(state.answer),
+          message_b: `${typeName(message)}:${names.join(',')}`,
+        };
+      },
+      { metadata: { executeIn: 'activity' } }
+    )
+    .addEdge(START, 'node_a')
+    .addEdge('node_a', 'node_b');
+}
+
+export const zodState = Object.fromEntries(
+  EXECUTE_IN.map((first) => [
+    first,
+    defineLangGraph({ graphs: { 'my-graph': zodStateGraph(first) }, defaultActivityOptions: DEFAULTS }),
   ])
 ) as Record<ExecuteIn, AnyDefinitions>;
 
@@ -669,6 +713,8 @@ export { ValueState };
 export const registry: Record<string, AnyDefinitions> = {
   'twoNodes.activity': twoNodes.activity,
   'twoNodes.workflow': twoNodes.workflow,
+  'zodState.activity': zodState.activity,
+  'zodState.workflow': zodState.workflow,
   command,
   commandSend,
   send,

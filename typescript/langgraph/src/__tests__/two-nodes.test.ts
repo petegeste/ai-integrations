@@ -33,3 +33,16 @@ for (const first of ['activity', 'workflow'] as const) {
     });
   }
 }
+
+for (const first of ['activity', 'workflow'] as const) {
+  test(`two nodes with a zod state schema, first in ${first}`, async (t) => {
+    const taskQueue = uid('my-graph');
+    const plugin = new LangGraphPlugin(registry[`zodState.${first}`]!);
+    const result = await withWorker(env(), { taskQueue, plugin }, () =>
+      execute(env(), runGraph, { taskQueue, args: [`zodState.${first}`, 'my-graph', { value: '', messages: [] }] })
+    );
+    t.is(result.messages[0].kwargs.tool_calls[0].name, 'search');
+    delete result.messages;
+    t.deepEqual(result, { value: '', answer: { value: 1 }, answer_type_b: 'object', message_b: 'AIMessage:search' });
+  });
+}
