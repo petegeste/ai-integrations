@@ -4,7 +4,7 @@
  * @module
  */
 
-import type { ActivityOptions } from '@temporalio/common';
+import type { ActivityOptions } from '@temporalio/workflow';
 
 /** Where a node or task runs: as a Temporal Activity, or inline in the Workflow. */
 export type ExecuteIn = 'activity' | 'workflow';

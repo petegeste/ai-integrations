@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 /**
  * Shared test scaffolding: a local Temporal server per test file, a Worker
  * factory with one cached Workflow bundle, and history helpers.

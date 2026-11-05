@@ -14,10 +14,10 @@
  * @internal
  */
 
-import { ApplicationFailure } from '@temporalio/common';
 import { Command, Send, isCommand } from '@langchain/langgraph';
-import { isBaseMessage, mapChatMessagesToStoredMessages, mapStoredMessagesToChatMessages } from '@langchain/core/messages';
-import type { BaseMessage, StoredMessage } from '@langchain/core/messages';
+import { BaseMessage, mapChatMessagesToStoredMessages, mapStoredMessagesToChatMessages } from '@langchain/core/messages';
+import type { StoredMessage } from '@langchain/core/messages';
+import { ApplicationFailure } from '@temporalio/common';
 
 /** A path into a value: object keys and array indices. */
 export type ValuePath = (string | number)[];
@@ -128,9 +128,9 @@ export function encodeValue(value: unknown, path: ValuePath, valueTypes: ValueTy
     valueTypes.push([path, COMMAND_TYPE_ID]);
     return payload;
   }
-  if (isBaseMessage(value)) {
+  if (BaseMessage.isInstance(value)) {
     valueTypes.push([path, MESSAGE_TYPE_ID]);
-    return mapChatMessagesToStoredMessages([value as BaseMessage])[0];
+    return mapChatMessagesToStoredMessages([value])[0];
   }
   if (isUint8Array(value)) {
     valueTypes.push([path, BYTES_TYPE_ID]);

@@ -3,8 +3,7 @@
  * the sandbox) and the tests' Workers (for the Activities) import them.
  */
 
-import { AIMessage, isAIMessage, isBaseMessage } from '@langchain/core/messages';
-import type { BaseMessage } from '@langchain/core/messages';
+import { AIMessage, BaseMessage } from '@langchain/core/messages';
 import { RunnableLambda } from '@langchain/core/runnables';
 import {
   Annotation,
@@ -21,10 +20,9 @@ import {
 } from '@langchain/langgraph';
 import type { LangGraphRunnableConfig } from '@langchain/langgraph';
 import { defineLangGraph } from '../workflow';
-import type { LangGraphDefinitions } from '../workflow';
-import type { ExecuteIn, LangGraphActivityOptions, NodeOptions, SummaryFn } from '../workflow';
+import type { ExecuteIn, LangGraphActivityOptions, LangGraphDefinitions, NodeOptions, SummaryFn } from '../workflow';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type AnyDefinitions = LangGraphDefinitions<any, any>;
 
 const DEFAULTS: LangGraphActivityOptions = { startToCloseTimeout: '10s' };
@@ -70,7 +68,7 @@ function userOf(config: LangGraphRunnableConfig | undefined): string {
 
 function typeName(value: unknown): string {
   if (value === null) return 'null';
-  if (isBaseMessage(value)) return isAIMessage(value as BaseMessage) ? 'AIMessage' : 'BaseMessage';
+  if (BaseMessage.isInstance(value)) return AIMessage.isInstance(value) ? 'AIMessage' : 'BaseMessage';
   if (value instanceof Uint8Array) return 'Uint8Array';
   if (value instanceof Date) return 'Date';
   if (value instanceof Command) return 'Command';
@@ -661,11 +659,9 @@ export const syncTaskFunctional = defineLangGraph({
 });
 
 /** A node whose runnable is not a function: the plugin can't run it as an Activity. */
-export function lambdaNodeGraph() {
-  return new StateGraph(ValueState)
-    .addNode('node', RunnableLambda.from((state: Value) => ({ value: state.value })))
-    .addEdge(START, 'node');
-}
+export const lambdaNodeGraph = new StateGraph(ValueState)
+  .addNode('node', RunnableLambda.from((state: Value) => ({ value: state.value })))
+  .addEdge(START, 'node');
 
 export { ValueState };
 

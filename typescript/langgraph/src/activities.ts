@@ -5,10 +5,10 @@
  * @internal
  */
 
-import { Context } from '@temporalio/activity';
-import { WorkflowStreamClient } from '@temporalio/workflow-streams/client';
 import { AsyncLocalStorageProviderSingleton } from '@langchain/core/singletons';
 import { isGraphInterrupt } from '@langchain/langgraph';
+import { Context } from '@temporalio/activity';
+import { WorkflowStreamClient } from '@temporalio/workflow-streams/client';
 import { encodeValue, restoreValue } from './codec';
 import type { ValueTypes } from './codec';
 import type { ActivityInput, ActivityOutput, Internals, LangGraphConfigPayload, NodeSpec, TaskSpec } from './specs';

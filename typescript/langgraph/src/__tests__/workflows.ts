@@ -3,14 +3,14 @@
  * so one bundle serves every test.
  */
 
+import { Command, MemorySaver } from '@langchain/langgraph';
 import { condition, continueAsNew, defineSignal, setHandler, workflowInfo } from '@temporalio/workflow';
 import { WorkflowStream } from '@temporalio/workflow-streams/workflow';
-import { Command, MemorySaver } from '@langchain/langgraph';
 import { cache } from '../workflow';
 import type { TaskCache } from '../workflow';
 import { registry } from './graphs';
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 
 export const ackDone = defineSignal('ack_done');
 

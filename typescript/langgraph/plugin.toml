@@ -11,4 +11,4 @@ docs = "https://docs.temporal.io/develop/typescript/integrations/langgraph"
 runtime-versions = ["22", "24"]
 
 [smoke]
-imports = ["@temporalio/langgraph", "@temporalio/langgraph/workflow"]
+imports = ["@temporalio/langgraph"]

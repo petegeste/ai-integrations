@@ -1,6 +1,6 @@
-import test from 'ava';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import test from 'ava';
 import { START, StateGraph, entrypoint, task } from '@langchain/langgraph';
 import { LangGraphPlugin, defineLangGraph } from '../index';
 import { ValueState, lambdaNodeGraph } from './graphs';
@@ -12,7 +12,7 @@ function graphWith(metadata?: Record<string, unknown>, options: Record<string, u
 }
 
 test('a node that is not a RunnableCallable is rejected', (t) => {
-  t.throws(() => defineLangGraph({ graphs: { validation: lambdaNodeGraph() } }), {
+  t.throws(() => defineLangGraph({ graphs: { validation: lambdaNodeGraph } }), {
     message: /must be a function \(a RunnableCallable\)/,
   });
 });

@@ -10,10 +10,10 @@
  * @internal
  */
 
-import { log, proxyActivities, setCurrentDetails } from '@temporalio/workflow';
-import type { ActivityOptions } from '@temporalio/common';
 import { GraphInterrupt, getConfig } from '@langchain/langgraph';
 import { AsyncLocalStorageProviderSingleton } from '@langchain/core/singletons';
+import { log, proxyActivities, setCurrentDetails } from '@temporalio/workflow';
+import type { ActivityOptions } from '@temporalio/workflow';
 import { encodeValue, restoreValue } from './codec';
 import type { ValuePath, ValueTypes } from './codec';
 import { runState } from './run-state';
