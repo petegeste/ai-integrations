@@ -3,7 +3,7 @@ import { WorkflowStreamClient } from '@temporalio/workflow-streams/client';
 import type { TestWorkflowEnvironment } from '@temporalio/testing';
 import { LangGraphPlugin } from '../index';
 import { registry } from './graphs';
-import { setupTestEnv, uid, withWorker } from './helpers';
+import { replay, setupTestEnv, uid, withWorker } from './helpers';
 import { ackDone, astreamPublishWorkflow, streamingWorkflow } from './workflows';
 
 const env = setupTestEnv(test);
@@ -29,9 +29,10 @@ for (const executeIn of ['activity', 'workflow'] as const) {
       const taskQueue = uid('streaming-ws');
       const workflowId = uid('test-streaming-ws');
       const key = `streaming.${executeIn}-${kind}`;
+      const plugin = new LangGraphPlugin(registry[key]!);
       const { chunks, result } = await withWorker(
         env(),
-        { taskQueue, plugin: new LangGraphPlugin(registry[key]!) },
+        { taskQueue, plugin },
         async () => {
           const handle = await env().client.workflow.start(streamingWorkflow, {
             taskQueue,
@@ -43,6 +44,7 @@ for (const executeIn of ['activity', 'workflow'] as const) {
           return { chunks, result: await handle.result() };
         }
       );
+      await replay(env(), plugin, workflowId);
       t.is(result, 'abc');
       t.deepEqual(chunks, [{ token: 'a' }, { token: 'b' }, { token: 'c' }, { done: true }]);
     });
@@ -52,7 +54,8 @@ for (const executeIn of ['activity', 'workflow'] as const) {
 test('the Workflow publishes stream() chunks', async (t) => {
   const taskQueue = uid('astream-publish');
   const workflowId = uid('test-astream-publish');
-  const chunks = await withWorker(env(), { taskQueue, plugin: new LangGraphPlugin(registry.astreamPublish!) }, async () => {
+  const plugin = new LangGraphPlugin(registry.astreamPublish!);
+  const chunks = await withWorker(env(), { taskQueue, plugin }, async () => {
     const handle = await env().client.workflow.start(astreamPublishWorkflow, {
       taskQueue,
       workflowId,
@@ -63,5 +66,6 @@ test('the Workflow publishes stream() chunks', async (t) => {
     await handle.result();
     return chunks;
   });
+  await replay(env(), plugin, workflowId);
   t.deepEqual(chunks, [{ node_a: { value: 'a' } }, { node_b: { value: 'ab' } }, { done: true }]);
 });

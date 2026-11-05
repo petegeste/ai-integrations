@@ -65,8 +65,15 @@ export function workflowBundle(): Promise<WorkflowBundle> {
 export interface WithWorkerOptions {
   taskQueue: string;
   plugin: LangGraphPlugin;
+  /**
+   * Defaults to 0, so every Workflow task replays the history from the start,
+   * as after a Worker restart or a cache eviction.
+   */
   maxCachedWorkflows?: number;
 }
+
+/** The plugin of each task queue's Worker, which {@link execute} replays with. */
+const plugins = new Map<string, LangGraphPlugin>();
 
 /** Runs `fn` while a Worker with `plugin` polls `taskQueue`. */
 export async function withWorker<T>(
@@ -81,8 +88,9 @@ export async function withWorker<T>(
     workflowBundle: await workflowBundle(),
     reuseV8Context: REUSE_V8_CONTEXT,
     plugins: [options.plugin],
-    maxCachedWorkflows: options.maxCachedWorkflows,
+    maxCachedWorkflows: options.maxCachedWorkflows ?? 0,
   });
+  plugins.set(options.taskQueue, options.plugin);
   return worker.runUntil(fn());
 }
 
@@ -119,16 +127,24 @@ export function scheduledActivities(events: HistoryEvent[]): string[] {
     .map((event) => event.activityTaskScheduledEventAttributes!.activityType?.name ?? '');
 }
 
-/** Executes a Workflow and returns its result, failing it after 30 seconds. */
-export function execute<T>(
+/**
+ * Executes a Workflow, failing it after 30 seconds, then replays its history
+ * with the task queue's plugin, and returns its result or rethrows its failure.
+ */
+export async function execute<T>(
   env: TestWorkflowEnvironment,
   workflow: string | ((...args: any[]) => Promise<T>),
   options: { taskQueue: string; args: unknown[]; workflowId?: string }
 ): Promise<T> {
-  return env.client.workflow.execute(workflow as never, {
+  const workflowId = options.workflowId ?? uid('test-workflow');
+  const result = env.client.workflow.execute(workflow as never, {
     taskQueue: options.taskQueue,
-    workflowId: options.workflowId ?? uid('test-workflow'),
+    workflowId,
     args: options.args as never,
     workflowExecutionTimeout: '30s',
   }) as Promise<T>;
+  await result.catch(() => undefined);
+  const plugin = plugins.get(options.taskQueue);
+  if (plugin !== undefined) await replay(env, plugin, workflowId);
+  return result;
 }
